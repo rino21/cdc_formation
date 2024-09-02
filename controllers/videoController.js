@@ -1,6 +1,7 @@
 const Video = require('../models/video');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs')
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -75,5 +76,42 @@ const deleteVideo = async (req, res) => {
   }
 };
 
-module.exports = { getAllVideo, getVideoById, createVideo, deleteVideo, upload };
+
+const streamVideo =  async (req, res)=>{
+  try {
+    const [rows] = await Video.getVideoById(req.params.id);
+    const videoPath = path.join(__dirname, '../'+rows[0].url);
+    const videoSize = fs.statSync(videoPath).size;
+    
+    const range = req.headers.range;
+    if (!range) {
+        return res.status(400).send("Requires Range header");
+    }
+    const CHUNK_SIZE = 10 ** 6; // 1MB
+    const start = Number(range.replace(/\D/g, ""));
+    const end = Math.min(start + CHUNK_SIZE, videoSize - 1);
+
+    if (start >= videoSize || end < start) {
+        return res.status(416).send("Requested Range Not Satisfiable");
+    }
+
+    const contentLength = end - start + 1;
+    const headers = {
+        "Content-Range": `bytes ${start}-${end}/${videoSize}`,
+        "Accept-Ranges": "bytes",
+        "Content-Length": contentLength,
+        "Content-Type": "video/mp4",
+    };
+
+    res.writeHead(206, headers);
+
+    const videoStream = fs.createReadStream(videoPath, { start, end });
+    videoStream.pipe(res);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+  
+}
+
+module.exports = { getAllVideo, getVideoById, createVideo, deleteVideo, upload,streamVideo };
 

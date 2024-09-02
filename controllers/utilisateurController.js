@@ -2,6 +2,34 @@
 const Utilisateur = require('../models/utilisateur')
 const Auth = require("./authController");
 
+const multer = require('multer');
+const path = require('path');
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/profile/');
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${file.originalname}`);
+  },
+});
+
+const fileFilter = (req, file, cb) => {
+  
+  const filetypes = /png|jpeg|/;
+  const mimetype = filetypes.test(file.mimetype);
+  const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+  
+  if (mimetype && extname) {
+    return cb(null, true);
+  } else {
+    cb(new Error('Seules les images au format png ou jpeg sont autorisées !'));
+  }
+};
+const upload = multer({ storage: storage, fileFilter: fileFilter });
+
+
+
 const getAllUtilisateur = async (req, res) => {
   try {
     const [rows] = await Utilisateur.getAllUtilisateur();
@@ -52,6 +80,20 @@ const updateUtilisateur = async (req, res) => {
   }
 };
 
+const insertOrUpdatePhotoUtilisateur = async (req, res) => {
+  try {
+    if (req.files) {
+      const photo = req.files.map((file) => ({
+        photo: `uploads/profile/${file.originalname}`,
+      }));
+      const result = await Utilisateur.InsertOrUpdatePhotoUtilisateur(photo[0].photo, req.params.id);
+      res.status(201).json({ message: `Mise en jour de la profile d'utilisateur n°: ${req.params.id} a été enregistré.`});
+    }  
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 const deleteUtilisateur = async (req, res) => {
   try {
     const result = await Utilisateur.deleteUtilisateur(req.params.id);
@@ -71,5 +113,7 @@ module.exports = {
   getUtilisateurById,
   createUtilisateur,
   updateUtilisateur,
-  deleteUtilisateur
+  deleteUtilisateur,
+  insertOrUpdatePhotoUtilisateur,
+  upload
 };

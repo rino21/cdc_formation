@@ -8,5 +8,6 @@ router.get("/:id", utilisateurController.getUtilisateurById);
 router.post("/", utilisateurController.createUtilisateur);
 router.put("/:id", utilisateurController.updateUtilisateur);
 router.delete("/:id", utilisateurController.deleteUtilisateur);
+router.post("/profile/:id",utilisateurController.upload.array('files', 1), utilisateurController.insertOrUpdatePhotoUtilisateur)
 
 module.exports = router;
